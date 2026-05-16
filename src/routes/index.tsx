@@ -31,6 +31,7 @@ import g1 from "@/assets/gallery-1.jpg";
 import g2 from "@/assets/gallery-2.jpg";
 import g3 from "@/assets/gallery-3.jpg";
 import g4 from "@/assets/gallery-4.jpg";
+import logoSrc from "@/assets/eclipse.png";
 
 export const Route = createFileRoute("/")({
   component: Landing,
@@ -96,14 +97,7 @@ function Nav() {
         }`}
       >
         <a href="#top" className="group flex items-center gap-2.5">
-          <div className="relative flex h-9 w-9 items-center justify-center rounded-full border border-gold/40">
-            <div className="absolute inset-0 rounded-full bg-gold/10 blur-md" />
-            <div className="h-3 w-3 rounded-full bg-gradient-gold shadow-[0_0_18px_var(--gold)]" />
-          </div>
-          <div className="leading-none">
-            <div className="font-display text-xl tracking-[0.2em] text-foreground">ECLIPSE</div>
-            <div className="text-[10px] tracking-[0.4em] text-gold/80">EVENTOS</div>
-          </div>
+          <img src={logoSrc} alt="Eclipse Eventos" className="h-11 w-auto brightness-0 invert" />
         </a>
         <nav className="hidden items-center gap-9 text-sm text-muted-foreground md:flex">
           {[
@@ -722,13 +716,7 @@ function Footer() {
       <div className="mx-auto grid max-w-7xl grid-cols-1 gap-10 px-6 md:grid-cols-3">
         <div>
           <div className="flex items-center gap-2.5">
-            <div className="relative flex h-9 w-9 items-center justify-center rounded-full border border-gold/40">
-              <div className="h-3 w-3 rounded-full bg-gradient-gold shadow-[0_0_18px_var(--gold)]" />
-            </div>
-            <div className="leading-none">
-              <div className="font-display text-xl tracking-[0.2em]">ECLIPSE</div>
-              <div className="text-[10px] tracking-[0.4em] text-gold/80">EVENTOS</div>
-            </div>
+            <img src={logoSrc} alt="Eclipse Eventos" className="h-12 w-auto brightness-0 invert" />
           </div>
           <p className="mt-5 max-w-xs text-sm text-muted-foreground">
             Producción visual premium para eventos. Hacemos inolvidable cada entrada.
