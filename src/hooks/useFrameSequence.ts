@@ -6,8 +6,7 @@ const FRAME_PATH = (i: number) => `/frames/frame-${String(i).padStart(3, "0")}.j
 
 /**
  * Apple-style scroll-driven frame-by-frame canvas animation.
- * Preloads all frames, then paints the correct frame on a <canvas>
- * based on scroll position — producing ultra-smooth cinematic playback.
+ * Optimized for mobile: caps DPR at 1.5 on mobile, uses low-power rendering.
  */
 export default function useFrameSequence() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -15,6 +14,8 @@ export default function useFrameSequence() {
   const imagesRef = useRef<HTMLImageElement[]>([]);
   const currentFrameRef = useRef(0);
   const rafRef = useRef<number | null>(null);
+  const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
+  const sizeRef = useRef({ w: 0, h: 0, dpr: 1 });
   const [loaded, setLoaded] = useState(false);
   const [progress, setProgress] = useState(0);
 
@@ -38,7 +39,6 @@ export default function useFrameSequence() {
         if (loadedCount === FRAME_COUNT) {
           imagesRef.current = images;
           setLoaded(true);
-          // Draw first frame
           renderFrame(0);
         }
       };
@@ -46,58 +46,95 @@ export default function useFrameSequence() {
     }
   }, []);
 
-  // Render a specific frame to canvas with cover-fit
-  const renderFrame = useCallback((index: number) => {
+  // Setup canvas size — call once and on resize
+  const setupCanvas = useCallback(() => {
     const canvas = canvasRef.current;
-    const ctx = canvas?.getContext("2d");
-    const img = imagesRef.current[index];
-    if (!canvas || !ctx || !img) return;
+    if (!canvas) return;
 
-    // Set canvas to viewport size for crisp rendering
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const isMobile = window.innerWidth < 768;
+    // Cap DPR: 1.5 on mobile, 2 on desktop for crispness without GPU strain
+    const dpr = Math.min(window.devicePixelRatio || 1, isMobile ? 1.5 : 2);
+    // Use dvh-aware height on mobile
     const w = window.innerWidth;
     const h = window.innerHeight;
 
-    if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
-      canvas.width = w * dpr;
-      canvas.height = h * dpr;
-      canvas.style.width = `${w}px`;
-      canvas.style.height = `${h}px`;
-      ctx.scale(dpr, dpr);
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    canvas.style.width = `${w}px`;
+    canvas.style.height = `${h}px`;
+
+    const ctx = canvas.getContext("2d", { alpha: false });
+    if (ctx) {
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctxRef.current = ctx;
     }
+
+    sizeRef.current = { w, h, dpr };
+  }, []);
+
+  // Render a specific frame to canvas with cover-fit
+  const renderFrame = useCallback((index: number) => {
+    const canvas = canvasRef.current;
+    let ctx = ctxRef.current;
+    const img = imagesRef.current[index];
+    if (!canvas || !img) return;
+
+    // Setup canvas if not done yet or size changed
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    if (!ctx || sizeRef.current.w !== w || sizeRef.current.h !== h) {
+      setupCanvas();
+      ctx = ctxRef.current;
+    }
+    if (!ctx) return;
+
+    const { w: cw, h: ch } = sizeRef.current;
 
     // Object-fit: cover calculation
     const imgRatio = img.naturalWidth / img.naturalHeight;
-    const canvasRatio = w / h;
+    const canvasRatio = cw / ch;
 
     let drawW: number, drawH: number, drawX: number, drawY: number;
 
     if (imgRatio > canvasRatio) {
-      drawH = h;
-      drawW = h * imgRatio;
-      drawX = (w - drawW) / 2;
+      drawH = ch;
+      drawW = ch * imgRatio;
+      drawX = (cw - drawW) / 2;
       drawY = 0;
     } else {
-      drawW = w;
-      drawH = w / imgRatio;
+      drawW = cw;
+      drawH = cw / imgRatio;
       drawX = 0;
-      drawY = (h - drawH) / 2;
+      drawY = (ch - drawH) / 2;
     }
 
-    ctx.clearRect(0, 0, w, h);
     ctx.drawImage(img, drawX, drawY, drawW, drawH);
-  }, []);
+  }, [setupCanvas]);
 
   // Handle resize
   useEffect(() => {
     const onResize = () => {
+      setupCanvas();
       if (loaded) renderFrame(currentFrameRef.current);
     };
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
-  }, [loaded, renderFrame]);
+  }, [loaded, renderFrame, setupCanvas]);
 
-  // Scroll-driven frame update with smooth interpolation
+  // Handle orientation change on mobile
+  useEffect(() => {
+    const onOrientationChange = () => {
+      // Small delay to let the browser settle
+      setTimeout(() => {
+        setupCanvas();
+        if (loaded) renderFrame(currentFrameRef.current);
+      }, 150);
+    };
+    window.addEventListener("orientationchange", onOrientationChange);
+    return () => window.removeEventListener("orientationchange", onOrientationChange);
+  }, [loaded, renderFrame, setupCanvas]);
+
+  // Scroll-driven frame update
   useMotionValueEvent(scrollYProgress, "change", (latest) => {
     if (!loaded) return;
 
@@ -109,7 +146,6 @@ export default function useFrameSequence() {
     if (targetFrame !== currentFrameRef.current) {
       currentFrameRef.current = targetFrame;
 
-      // Use rAF for smooth GPU-accelerated rendering
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       rafRef.current = requestAnimationFrame(() => {
         renderFrame(targetFrame);
@@ -117,7 +153,6 @@ export default function useFrameSequence() {
     }
   });
 
-  // Derived motion values for cinematic parallax layers
   const frameProgress = scrollYProgress;
 
   return {

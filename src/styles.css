@@ -88,6 +88,8 @@
     scroll-behavior: smooth;
     scrollbar-width: thin;
     scrollbar-color: rgba(201, 169, 110, 0.2) transparent;
+    -webkit-overflow-scrolling: touch;
+    -webkit-tap-highlight-color: transparent;
   }
   body {
     background-color: var(--color-background);
@@ -165,7 +167,6 @@
   }
 
   /* ── Film grain overlay ── */
-  /* Optimized: Removed complex SVG turbulence animation which kills GPU performance on scroll */
   .film-grain::before {
     content: "";
     position: fixed;
@@ -173,12 +174,17 @@
     z-index: 9999;
     pointer-events: none;
     opacity: 0.04;
-    /* Static lightweight noise pattern */
     background-image: url("data:image/svg+xml;utf8,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
     background-repeat: repeat;
     mix-blend-mode: overlay;
-    transform: translateZ(0); /* Force hardware acceleration */
+    transform: translateZ(0);
     will-change: transform;
+  }
+  /* Lighter film grain on mobile for performance */
+  @media (max-width: 768px) {
+    .film-grain::before {
+      opacity: 0.02;
+    }
   }
 
   .noise::before {
@@ -199,8 +205,6 @@
   /* ══════════════════════════════════════
      PREMIUM BUTTON SYSTEM
      ══════════════════════════════════════ */
-
-  /* Primary CTA — gold gradient with cinematic hover */
   .btn-primary {
     position: relative;
     display: inline-flex;
@@ -230,7 +234,6 @@
     transform: translateY(0px) scale(0.99);
     transition-duration: 0.15s;
   }
-  /* Light sweep on hover */
   .btn-primary::before {
     content: "";
     position: absolute;
@@ -248,13 +251,20 @@
   .btn-primary:hover::before {
     transform: translateX(120%);
   }
-  /* Inner content stays above sweep */
   .btn-primary > * {
     position: relative;
     z-index: 2;
   }
+  /* Mobile button touch sizing */
+  @media (max-width: 640px) {
+    .btn-primary {
+      padding: 0.875rem 1.75rem;
+      font-size: 0.8125rem;
+      width: 100%;
+      justify-content: center;
+    }
+  }
 
-  /* Secondary CTA — glass outline with warm glow */
   .btn-secondary {
     position: relative;
     display: inline-flex;
@@ -285,7 +295,6 @@
     transform: translateY(0px);
     transition-duration: 0.15s;
   }
-  /* Subtle inner glow sweep */
   .btn-secondary::before {
     content: "";
     position: absolute;
@@ -301,6 +310,14 @@
   }
   .btn-secondary:hover::before {
     opacity: 1;
+  }
+  @media (max-width: 640px) {
+    .btn-secondary {
+      padding: 0.875rem 1.75rem;
+      font-size: 0.8125rem;
+      width: 100%;
+      justify-content: center;
+    }
   }
 
   /* ══════════════════════════════════════
@@ -319,7 +336,6 @@
       0 0 0 1px rgba(201, 169, 110, 0.15),
       0 0 40px rgba(201, 169, 110, 0.06);
   }
-  /* Warm glow on hover — positioned behind card content */
   .card-cinematic::before {
     content: "";
     position: absolute;
@@ -337,7 +353,6 @@
   .card-cinematic:hover::before {
     opacity: 1;
   }
-  /* Light sweep across card */
   .card-cinematic::after {
     content: "";
     position: absolute;
@@ -357,6 +372,12 @@
   }
   .card-cinematic:hover::after {
     opacity: 1;
+  }
+  /* Disable hover transforms on touch */
+  @media (hover: none) {
+    .card-cinematic:hover {
+      transform: none;
+    }
   }
 
   /* ── Nav link underline animation ── */
@@ -383,7 +404,7 @@
     color: var(--gold);
   }
 
-  /* ── Section divider — cinematic horizontal light ── */
+  /* ── Section divider ── */
   .section-divider {
     position: relative;
     height: 1px;
@@ -539,4 +560,67 @@
   background: linear-gradient(110deg, transparent 30%, rgba(201, 169, 110, 0.35) 50%, transparent 70%);
   background-size: 200% 100%;
   animation: shimmer 3.5s linear infinite;
+}
+
+/* Reduce animations on mobile for smoother scrolling */
+@media (max-width: 768px) {
+  .animate-ambient {
+    animation: none;
+    opacity: 0;
+  }
+  .animate-warm-pulse {
+    animation: warm-pulse 8s ease-in-out infinite;
+    opacity: 0.08;
+  }
+}
+
+/* ══════════════════════════════════════
+   HERO SCROLL CONTAINER — responsive
+   ══════════════════════════════════════ */
+.hero-scroll-container {
+  height: 300vh;
+}
+@media (max-width: 768px) {
+  .hero-scroll-container {
+    height: 220vh;
+  }
+}
+
+/* ══════════════════════════════════════
+   KEN BURNS — slow zoom for bg images
+   ══════════════════════════════════════ */
+@keyframes ken-burns {
+  0% { transform: scale(1) translateZ(0); }
+  100% { transform: scale(1.08) translateZ(0); }
+}
+.ken-burns-slow {
+  animation: ken-burns 25s ease-in-out alternate infinite;
+  will-change: transform;
+}
+
+/* ══════════════════════════════════════
+   MOBILE TOUCH & LAYOUT REFINEMENTS
+   ══════════════════════════════════════ */
+@media (max-width: 640px) {
+  /* Ensure safe-area insets for notched phones */
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* Prevent text selection on interactive elements */
+  .btn-primary,
+  .btn-secondary {
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: manipulation;
+  }
+}
+
+/* ══════════════════════════════════════
+   GPU COMPOSITING HINTS
+   ══════════════════════════════════════ */
+.gpu-layer {
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
